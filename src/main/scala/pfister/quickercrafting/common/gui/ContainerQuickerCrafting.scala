@@ -9,10 +9,10 @@ class ContainerQuickerCrafting(playerInv: InventoryPlayer) extends Container {
   for (
     yIndex <- 0 until 3;
     xIndex <- 0 until 9
-  ) addSlotToContainer(new Slot(playerInv, yIndex * 9 + xIndex + 9, 8 + xIndex * 18, 84 + yIndex * 18))
+  ) addSlotToContainer(new Slot(playerInv, yIndex * 9 + xIndex + 9, 8 + xIndex * 18, 93 + yIndex * 18))
 
   for (hotbarIndex <- 0 until 9)
-    addSlotToContainer(new Slot(playerInv, hotbarIndex, 8 + hotbarIndex * 18, 142))
+    addSlotToContainer(new Slot(playerInv, hotbarIndex, 8 + hotbarIndex * 18, 151))
   //
 
   override def canInteractWith(playerIn: EntityPlayer): Boolean = {
