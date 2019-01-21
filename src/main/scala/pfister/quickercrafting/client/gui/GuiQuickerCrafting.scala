@@ -5,6 +5,7 @@ import java.util.Comparator
 import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.client.gui.{GuiButton, GuiButtonImage}
 import net.minecraft.client.renderer.{GlStateManager, RenderHelper}
+import net.minecraft.client.resources.I18n
 import net.minecraft.entity.player.InventoryPlayer
 import net.minecraft.item.crafting.IRecipe
 import net.minecraft.util.ResourceLocation
@@ -28,12 +29,14 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
 
   private var recipeIterator: Iterator[IRecipe] = recipeCalculator.getRecipeIterator()
 
+  private val fakeCraftingInventory: FakeInventoryCrafting = new FakeInventoryCrafting(this.inventorySlots)
+
   var currentPage: Int = 1
-  var maxPage: Int = 1
+  var maxPage: Int = currentPage
 
   // Set size of window
-  this.xSize = 208
-  this.ySize = 175
+  this.xSize = 234
+  this.ySize = 183
   //
 
   override def initGui(): Unit = {
@@ -42,8 +45,8 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     for (y <- 0 until 4; x <- 0 until 8)
       buttonList.add(new GuiButtonQuickRecipe(y * 8 + x, this.guiLeft + 7 + x * 20, this.guiTop + 7 + y * 20, 20, 20, 236, 15, 20, GuiQuickCrafting.TEXTURE))
 
-    buttonList.add(new GuiButtonImage(33, this.guiLeft + 183, this.guiTop + 7, 11, 7, 234, 0, 7, GuiQuickCrafting.TEXTURE))
-    buttonList.add(new GuiButtonImage(34, this.guiLeft + 183, this.guiTop + 27, 11, 7, 245, 0, 7, GuiQuickCrafting.TEXTURE))
+    buttonList.add(new GuiButtonImage(33, this.guiLeft + 194, this.guiTop + 7, 11, 7, 234, 0, 7, GuiQuickCrafting.TEXTURE))
+    buttonList.add(new GuiButtonImage(34, this.guiLeft + 194, this.guiTop + 27, 11, 7, 245, 0, 7, GuiQuickCrafting.TEXTURE))
 
     recipeIterator.foreach(r => cachedRecipes.append(r))
     cachedRecipes.sort(new Comparator[IRecipe] {
@@ -54,13 +57,24 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     maxPage = cachedRecipes.size / 32
     if (cachedRecipes.size % 32 != 0) maxPage += 1
 
+
   }
 
   override def actionPerformed(button: GuiButton): Unit = {
-    currentPage = button.id match {
-      case 33 => Math.max(currentPage - 1, 1)
-      case 34 => Math.min(currentPage + 1, maxPage)
-      case _ => currentPage
+    button.id match {
+      case 33 => currentPage = Math.max(currentPage - 1, 1)
+      case 34 => currentPage = Math.min(currentPage + 1, maxPage)
+      case id if id < 33 => {
+        val recipe = Try(cachedRecipes(currentPage * 32 + id))
+        if (recipe.isSuccess) {
+          fakeCraftingInventory.setFakedRecipe(recipe.get)
+          val itemCrafted = recipe.get.getCraftingResult(fakeCraftingInventory)
+          net.minecraftforge.fml.common.FMLCommonHandler.instance.firePlayerCraftingEvent(playerInv.player, itemCrafted, fakeCraftingInventory)
+
+        }
+
+      }
+      case _ =>
     }
   }
 
@@ -86,7 +100,10 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
 
   override def drawGuiContainerForegroundLayer(mouseX: Int, mouseY: Int): Unit = {
     val string = s"$currentPage/$maxPage"
-    this.fontRenderer.drawString(string, 176 - (string.length - 4) * 3, 17, 0)
+    this.fontRenderer.drawString(string, 187 - (string.length - 4) * 3, 17, 0)
+
+    this.fontRenderer.drawString(I18n.format("container.crafting"), 172, 36, 4210752)
+    this.fontRenderer.drawString(I18n.format("container.inventory"), 8, 89, 4210752)
   }
 
   // Draws all the recipe items over the crafting buttons
