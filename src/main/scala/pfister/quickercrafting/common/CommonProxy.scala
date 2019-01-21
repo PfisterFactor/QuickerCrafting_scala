@@ -37,6 +37,7 @@ class CommonProxy {
   @EventHandler
   def postInit(event: FMLPostInitializationEvent): Unit = {
 
+
   }
 
 

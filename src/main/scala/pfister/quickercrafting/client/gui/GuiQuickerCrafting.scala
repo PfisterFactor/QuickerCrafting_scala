@@ -7,8 +7,10 @@ import net.minecraft.client.gui.{GuiButton, GuiButtonImage}
 import net.minecraft.client.renderer.{GlStateManager, RenderHelper}
 import net.minecraft.client.resources.I18n
 import net.minecraft.entity.player.InventoryPlayer
+import net.minecraft.inventory.{Container, IContainerListener, IInventory}
+import net.minecraft.item.ItemStack
 import net.minecraft.item.crafting.IRecipe
-import net.minecraft.util.ResourceLocation
+import net.minecraft.util.{NonNullList, ResourceLocation}
 import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.client.RecipeCalculator
 import pfister.quickercrafting.common.gui.{ContainerQuickerCrafting, GuiButtonQuickRecipe}
@@ -21,7 +23,8 @@ import scala.util.Try
 private[gui] object GuiQuickCrafting {
   final val TEXTURE: ResourceLocation = new ResourceLocation(QuickerCrafting.MOD_ID, "textures/gui/quickercrafting.png")
 }
-class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new ContainerQuickerCrafting(playerInv)) {
+
+class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new ContainerQuickerCrafting(playerInv)) with IContainerListener {
 
   private val cachedRecipes: mutable.ListBuffer[IRecipe] = mutable.ListBuffer()
 
@@ -38,6 +41,28 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
   this.xSize = 234
   this.ySize = 183
   //
+  inventorySlots.addListener(this)
+
+  def updateRecipes(container: Container, slotInd: Int, stack: ItemStack): Unit = {
+    cachedRecipes.clear()
+    recipeCalculator.updateWorkingInv(container, slotInd, stack)
+    recipeIterator = recipeCalculator.getRecipeIterator()
+    val time = QuickerCrafting.time {
+      recipeIterator.foreach(r => cachedRecipes.append(r))
+      cachedRecipes.sort(new Comparator[IRecipe] {
+        override def compare(o1: IRecipe, o2: IRecipe): Int =
+          o1.getRecipeOutput.getItem.getCreativeTab.getTabIndex - o2.getRecipeOutput.getItem.getCreativeTab.getTabIndex
+      })
+    }
+    QuickerCrafting.Log.info(s"Recipe generation took ${time._1} ms.")
+    maxPage = cachedRecipes.size / 32
+    if (cachedRecipes.size % 32 != 0) maxPage += 1
+    if (currentPage > maxPage)
+      currentPage = maxPage
+    if (currentPage <= 0)
+      currentPage = 1
+
+  }
 
   override def initGui(): Unit = {
     super.initGui()
@@ -48,18 +73,20 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     buttonList.add(new GuiButtonImage(33, this.guiLeft + 194, this.guiTop + 7, 11, 7, 234, 0, 7, GuiQuickCrafting.TEXTURE))
     buttonList.add(new GuiButtonImage(34, this.guiLeft + 194, this.guiTop + 27, 11, 7, 245, 0, 7, GuiQuickCrafting.TEXTURE))
 
-    recipeIterator.foreach(r => cachedRecipes.append(r))
-    cachedRecipes.sort(new Comparator[IRecipe] {
-      override def compare(o1: IRecipe, o2: IRecipe): Int =
-        o1.getRecipeOutput.getItem.getCreativeTab.getTabIndex - o2.getRecipeOutput.getItem.getCreativeTab.getTabIndex
-    })
 
-    maxPage = cachedRecipes.size / 32
-    if (cachedRecipes.size % 32 != 0) maxPage += 1
 
 
   }
 
+  // Fired on change in inventory
+  override def sendSlotContents(containerToSend: Container, slotInd: Int, stack: ItemStack): Unit = {
+    updateRecipes(containerToSend, slotInd, stack)
+  }
+
+  override def updateScreen(): Unit = {
+    super.updateScreen()
+    inventorySlots.detectAndSendChanges()
+  }
   override def actionPerformed(button: GuiButton): Unit = {
     button.id match {
       case 33 => currentPage = Math.max(currentPage - 1, 1)
@@ -138,6 +165,18 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
 
   }
 
+  override def hasClickedOutside(mouseX: Int, mouseY: Int, left: Int, top: Int): Boolean = {
+    if (mouseY > top + 107) {
+      mouseX < left || mouseX > left + 175 || mouseY < top || mouseY > top + ySize
+    }
+    else
+      super.hasClickedOutside(mouseX, mouseY, left, top)
+  }
 
+  override def sendWindowProperty(containerIn: Container, varToUpdate: Int, newValue: Int): Unit = {}
+
+  override def sendAllWindowProperties(containerIn: Container, inventory: IInventory): Unit = {}
+
+  override def sendAllContents(containerToSend: Container, itemsList: NonNullList[ItemStack]): Unit = {}
 }
 
