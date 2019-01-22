@@ -9,6 +9,7 @@ import net.minecraftforge.fml.common.network.NetworkRegistry
 import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.common.gui.GuiHandler
 import pfister.quickercrafting.common.item.ItemGuiTester
+import pfister.quickercrafting.common.network.PacketHandler
 
 
 class CommonProxy {
@@ -18,7 +19,7 @@ class CommonProxy {
   // * Registering Capabilities
   @EventHandler
   def preInit(event:FMLPreInitializationEvent): Unit = {
-
+    PacketHandler.registerMessages()
   }
 
   // Init is where to accomplish any game related tasks that rely upon the items and blocks set up in preInit.

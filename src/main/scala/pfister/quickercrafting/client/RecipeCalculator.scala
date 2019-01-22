@@ -1,7 +1,6 @@
 package pfister.quickercrafting.client
 
 import net.minecraft.entity.player.InventoryPlayer
-import net.minecraft.inventory.Container
 import net.minecraft.item.ItemStack
 import net.minecraft.item.crafting.{IRecipe, Ingredient}
 import net.minecraftforge.fml.common.registry.ForgeRegistries
@@ -14,11 +13,10 @@ class RecipeCalculator(playerInv: InventoryPlayer) {
   val RECIPES = ForgeRegistries.RECIPES
 
   // A copy of the player's inventory to avoid modifying itemstacks in the players inventory
-  private val recipeWorkingInv: Array[ItemStack] = Array.fill(36)(ItemStack.EMPTY)
+  private val recipeWorkingInv: Array[ItemStack] = playerInv.mainInventory.map(_.copy).toArray
 
-  def updateWorkingInv(container: Container, slotInd: Int, stack: ItemStack): Unit = {
-    val index = container.inventorySlots.get(slotInd).slotNumber
-    recipeWorkingInv(index) = new ItemStack(stack.getItem, stack.getCount, stack.getMetadata, stack.getTagCompound)
+  def updateWorkingInv(index: Int, stack: ItemStack): Unit = {
+    recipeWorkingInv(index) = stack.copy()
   }
 
   // Attempts to craft a recipe using the players inventory

@@ -14,6 +14,7 @@ import net.minecraft.util.{NonNullList, ResourceLocation}
 import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.client.RecipeCalculator
 import pfister.quickercrafting.common.gui.{ContainerQuickerCrafting, GuiButtonQuickRecipe}
+import pfister.quickercrafting.common.network.{MessageCraftItem, PacketHandler}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -28,7 +29,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
 
   private val cachedRecipes: mutable.ListBuffer[IRecipe] = mutable.ListBuffer()
 
-  private var recipeCalculator: RecipeCalculator = new RecipeCalculator(playerInv)
+  private val recipeCalculator: RecipeCalculator = new RecipeCalculator(playerInv)
 
   private var recipeIterator: Iterator[IRecipe] = recipeCalculator.getRecipeIterator()
 
@@ -45,7 +46,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
 
   def updateRecipes(container: Container, slotInd: Int, stack: ItemStack): Unit = {
     cachedRecipes.clear()
-    recipeCalculator.updateWorkingInv(container, slotInd, stack)
+    recipeCalculator.updateWorkingInv(container.getSlot(slotInd).getSlotIndex, stack)
     recipeIterator = recipeCalculator.getRecipeIterator()
     val time = QuickerCrafting.time {
       recipeIterator.foreach(r => cachedRecipes.append(r))
@@ -55,7 +56,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
       })
     }
     QuickerCrafting.Log.info(s"Recipe generation took ${time._1} ms.")
-    maxPage = cachedRecipes.size / 32
+    maxPage = Math.max(1, cachedRecipes.size / 32)
     if (cachedRecipes.size % 32 != 0) maxPage += 1
     if (currentPage > maxPage)
       currentPage = maxPage
@@ -91,16 +92,11 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     button.id match {
       case 33 => currentPage = Math.max(currentPage - 1, 1)
       case 34 => currentPage = Math.min(currentPage + 1, maxPage)
-      case id if id < 33 => {
-        val recipe = Try(cachedRecipes(currentPage * 32 + id))
+      case id if id < 33 =>
+        val recipe = Try(cachedRecipes((currentPage - 1) * 32 + id))
         if (recipe.isSuccess) {
-          fakeCraftingInventory.setFakedRecipe(recipe.get)
-          val itemCrafted = recipe.get.getCraftingResult(fakeCraftingInventory)
-          net.minecraftforge.fml.common.FMLCommonHandler.instance.firePlayerCraftingEvent(playerInv.player, itemCrafted, fakeCraftingInventory)
-
+          PacketHandler.INSTANCE.sendToServer(new MessageCraftItem(recipe.get))
         }
-
-      }
       case _ =>
     }
   }
