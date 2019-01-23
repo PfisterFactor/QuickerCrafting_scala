@@ -60,7 +60,10 @@ class MessageCraftItemHandler extends IMessageHandler[MessageCraftItem, IMessage
       player.inventory.decrStackSize(pair._1, pair._2)
     })
     val recipeOutput = message.Recipe.getRecipeOutput.copy()
-    if (!player.inventory.addItemStackToInventory(recipeOutput)) {
+    if (player.isCreative && player.inventory.getFirstEmptyStack == -1) {
+      player.dropItem(recipeOutput, false)
+    }
+    else if (!player.inventory.addItemStackToInventory(recipeOutput)) {
       player.dropItem(recipeOutput, false)
     }
 
