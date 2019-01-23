@@ -8,6 +8,8 @@ import net.minecraftforge.fml.common.network.simpleimpl.{IMessage, IMessageHandl
 import net.minecraftforge.fml.common.registry.ForgeRegistries
 import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.client.RecipeCalculator
+import pfister.quickercrafting.common.Implicits.ExtItemStack
+import pfister.quickercrafting.common.gui.ContainerQuickerCrafting
 
 import scala.util.Try
 
@@ -49,7 +51,17 @@ class MessageCraftItemHandler extends IMessageHandler[MessageCraftItem, IMessage
 
     val player = ctx.getServerHandler.player
     val recipeCalculator = new RecipeCalculator(player.inventory)
+    if (!player.openContainer.isInstanceOf[ContainerQuickerCrafting]) {
+      QuickerCrafting.Log.warn(s"MessageCraftItemHandler: ContainerQuickerCrafting is not open on the server.")
+      return null
+    }
 
+    val container = player.openContainer.asInstanceOf[ContainerQuickerCrafting]
+
+    if (!message.Recipe.getRecipeOutput.canStack(container.craftResult.getStackInSlot(0)) && !container.craftResult.isEmpty) {
+      QuickerCrafting.Log.warn(s"MessageCraftItemHandler: Cannot stack '${message.RecipeString}' into item slot on server.")
+      return null
+    }
     val itemsToRemove = recipeCalculator.tryCraftRecipe(message.Recipe)
 
     if (itemsToRemove.isEmpty) {
@@ -60,10 +72,8 @@ class MessageCraftItemHandler extends IMessageHandler[MessageCraftItem, IMessage
       player.inventory.decrStackSize(pair._1, pair._2)
     })
     val recipeOutput = message.Recipe.getRecipeOutput.copy()
-    if (player.isCreative && player.inventory.getFirstEmptyStack == -1) {
-      player.dropItem(recipeOutput, false)
-    }
-    else if (!player.inventory.addItemStackToInventory(recipeOutput)) {
+    val leftOver = container.craftResult.addItem(recipeOutput)
+    if (!leftOver.isEmpty) {
       player.dropItem(recipeOutput, false)
     }
 
