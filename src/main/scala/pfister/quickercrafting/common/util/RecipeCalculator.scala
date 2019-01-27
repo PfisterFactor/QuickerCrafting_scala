@@ -1,4 +1,4 @@
-package pfister.quickercrafting.client
+package pfister.quickercrafting.common.util
 
 import net.minecraft.entity.player.InventoryPlayer
 import net.minecraft.item.ItemStack
@@ -8,13 +8,26 @@ import net.minecraftforge.fml.common.registry.ForgeRegistries
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-
+object RecipeCalculator {
+  // Sorts the recipe registry for convenient display
+  val SortedRecipes: Array[IRecipe] = ForgeRegistries.RECIPES.getValuesCollection.toSeq.filterNot(_.isDynamic)
+    .sorted(new Ordering[IRecipe] {
+      override def compare(x: IRecipe, y: IRecipe): Int = {
+        val itemX = x.getRecipeOutput.getItem
+        val itemY = y.getRecipeOutput.getItem
+        var comparison = 0
+        if (comparison == 0)
+          comparison = itemX.getClass.getSimpleName.compareTo(itemY.getClass.getSimpleName)
+        if (comparison == 0)
+          comparison = itemX.getUnlocalizedName.compareTo(itemY.getUnlocalizedName)
+        comparison
+      }
+    }).toArray
+}
 class RecipeCalculator(playerInv: InventoryPlayer) {
-  val RECIPES = ForgeRegistries.RECIPES
 
   // A copy of the player's inventory to avoid modifying itemstacks in the players inventory
   private val recipeWorkingInv: Array[ItemStack] = playerInv.mainInventory.map(_.copy).toArray
-
   def updateWorkingInv(index: Int, stack: ItemStack): Unit = {
     recipeWorkingInv(index) = stack.copy()
   }
@@ -55,8 +68,8 @@ class RecipeCalculator(playerInv: InventoryPlayer) {
   def canCraft(recipe: IRecipe): Boolean = tryCraftRecipe(recipe).isDefined
 
   def getRecipeIterator(): Iterator[IRecipe] = {
-    RECIPES.filter(recipe => {
-      !recipe.getRecipeOutput.isEmpty && canCraft(recipe)
-    }).toIterator
+    RecipeCalculator.SortedRecipes.toIterator.filter(recipe => {
+      canCraft(recipe)
+    })
   }
 }

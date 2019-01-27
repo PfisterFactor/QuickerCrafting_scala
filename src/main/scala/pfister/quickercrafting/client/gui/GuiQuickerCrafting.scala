@@ -1,30 +1,27 @@
 package pfister.quickercrafting.client.gui
 
-import java.util.Comparator
-
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.client.gui.{GuiButton, GuiButtonImage}
 import net.minecraft.client.renderer.{GlStateManager, RenderHelper}
 import net.minecraft.client.resources.I18n
+import net.minecraft.client.util.RecipeItemHelper
 import net.minecraft.entity.player.InventoryPlayer
 import net.minecraft.inventory.{Container, IContainerListener, IInventory}
 import net.minecraft.item.ItemStack
 import net.minecraft.item.crafting.IRecipe
-import net.minecraft.network.play.client.CPacketPlaceRecipe
 import net.minecraft.util.{NonNullList, ResourceLocation}
 import net.minecraftforge.client.event.RenderTooltipEvent
 import net.minecraftforge.fml.client.config.GuiUtils
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
 import pfister.quickercrafting.QuickerCrafting
-import pfister.quickercrafting.client.RecipeCalculator
-import pfister.quickercrafting.common.Implicits.ExtItemStack
 import pfister.quickercrafting.common.gui.{ContainerQuickerCrafting, GuiButtonQuickRecipe}
 import pfister.quickercrafting.common.network.{MessageCraftItem, PacketHandler}
+import pfister.quickercrafting.common.util.ExtensionClasses.ExtItemStack
+import pfister.quickercrafting.common.util.RecipeCalculator
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 import scala.util.Try
 
 @EventBusSubscriber
@@ -45,13 +42,17 @@ object GuiQuickCrafting {
 
     if (itemMap.isEmpty) return
 
+    val packedItemsAndCounts = itemMap.get.foldLeft(Map[Int, Int]())((acc, pair) => {
+      val stackPacked = RecipeItemHelper.pack(Minecraft.getMinecraft.player.inventory.mainInventory.get(pair._1))
+      acc.updated(stackPacked, acc.getOrDefault(stackPacked, 0) + pair._2)
+    })
 
     val tooltipX = event.getX + event.getWidth + 7
     val tooltipY = event.getY
 
 
-    val tooltipTextWidth = if (itemMap.size >= 3) 54 else itemMap.get.size * 18
-    val tooltipHeight = (1 + itemMap.size / 3) * 18
+    val tooltipTextWidth = if (packedItemsAndCounts.size >= 3) 54 else packedItemsAndCounts.size * 18
+    val tooltipHeight = (1 + packedItemsAndCounts.size / 3) * 18
     val backgroundColor = 0xF0100010
     val borderColorStart = 0x505000FF
     val borderColorEnd = (borderColorStart & 0xFEFEFE) >> 1 | borderColorStart & 0xFF000000
@@ -68,16 +69,16 @@ object GuiQuickCrafting {
 
     var x = 0
     var y = 0
-    itemMap.get.foreach(pair => {
+    packedItemsAndCounts.foreach(pair => {
       GlStateManager.pushMatrix()
       RenderHelper.disableStandardItemLighting()
       RenderHelper.enableGUIStandardItemLighting()
       GlStateManager.translate(0, 0, 301)
-      val itemStack = gui.mc.player.inventory.mainInventory.get(pair._1)
-      gui.drawItemStack(itemStack, tooltipX + x * 18, tooltipY + y * 18, "" + pair._2)
+      val stack = RecipeItemHelper.unpack(pair._1)
+      gui.drawItemStack(stack, tooltipX + x * 18, tooltipY + y * 18, "" + pair._2)
       GlStateManager.popMatrix()
       y = if (x == 2) y + 1 else y
-      x = x + 1 % 3
+      x = (x + 1) % 3
     })
 
   }
@@ -85,15 +86,10 @@ object GuiQuickCrafting {
 
 class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new ContainerQuickerCrafting(playerInv)) with IContainerListener {
 
-  private val cachedRecipes: mutable.ListBuffer[IRecipe] = mutable.ListBuffer()
-
   val RecipeCalculator: RecipeCalculator = new RecipeCalculator(playerInv)
-
-  private var recipeIterator: Iterator[IRecipe] = RecipeCalculator.getRecipeIterator()
-
+  private var cachedRecipes: Stream[IRecipe] = _
 
   private var currentPage: Int = 1
-  private var maxPage: Int = currentPage
 
   // Set size of window
   this.xSize = 208
@@ -105,40 +101,13 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
 
   def getHoveredRecipe: Option[IRecipe] = hoveredRecipe
 
-  def updateRecipes(container: Container, invIndex: Int, stack: ItemStack): Unit = {
-    cachedRecipes.clear()
-    RecipeCalculator.updateWorkingInv(invIndex, stack)
-    recipeIterator = RecipeCalculator.getRecipeIterator()
-    val time = QuickerCrafting.time {
-      recipeIterator.foreach(r => cachedRecipes.append(r))
-      cachedRecipes.sort(new Comparator[IRecipe] {
-        override def compare(o1: IRecipe, o2: IRecipe): Int =
-          o1.getRecipeOutput.getItem.getCreativeTab.getTabIndex - o2.getRecipeOutput.getItem.getCreativeTab.getTabIndex
-      })
-    }
-    QuickerCrafting.Log.info(s"Recipe generation took ${time._1} ms.")
-    maxPage = cachedRecipes.size / 32
-    if (cachedRecipes.size % 32 != 0) maxPage += 1
-    maxPage = Math.max(1, maxPage)
-    if (currentPage > maxPage)
-      currentPage = maxPage
-    if (currentPage <= 0)
-      currentPage = 1
-
-  }
-
   override def initGui(): Unit = {
     super.initGui()
     // Populate the recipe list with buttons
     for (y <- 0 until 4; x <- 0 until 8)
       buttonList.add(new GuiButtonQuickRecipe(y * 8 + x, this.guiLeft + 7 + x * 20, this.guiTop + 16 + y * 20, 20, 20, 236, 15, 20, GuiQuickCrafting.TEXTURE))
-
     buttonList.add(new GuiButtonImage(33, this.guiLeft + 178, this.guiTop + 16, 12, 7, 232, 0, 7, GuiQuickCrafting.TEXTURE))
     buttonList.add(new GuiButtonImage(34, this.guiLeft + 178, this.guiTop + 36, 12, 7, 244, 0, 7, GuiQuickCrafting.TEXTURE))
-
-
-
-
   }
 
   // Fired on change in inventory
@@ -146,6 +115,11 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     val slot = this.inventorySlots.getSlot(slotInd)
     if (slot.inventory.isInstanceOf[InventoryPlayer])
       updateRecipes(containerToSend, slot.getSlotIndex, stack)
+  }
+
+  def updateRecipes(container: Container, invIndex: Int, stack: ItemStack): Unit = {
+    RecipeCalculator.updateWorkingInv(invIndex, stack)
+    cachedRecipes = RecipeCalculator.getRecipeIterator().toStream
   }
 
   override def updateScreen(): Unit = {
@@ -157,12 +131,12 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
   override def actionPerformed(button: GuiButton): Unit = {
     button.id match {
       case 33 => currentPage = Math.max(currentPage - 1, 1)
-      case 34 => currentPage = Math.min(currentPage + 1, maxPage)
+      case 34 =>
+        if (cachedRecipes.isDefinedAt(currentPage * 32))
+          currentPage = currentPage + 1
       case id if id < 33 =>
         val recipe = Try(cachedRecipes((currentPage - 1) * 32 + id))
         if (recipe.isSuccess) {
-          val packet = new CPacketPlaceRecipe(playerInv.player.openContainer.windowId, recipe.get, false)
-          //playerInv.player.asInstanceOf[EntityPlayerSP].connection.sendPacket(packet)
           val craftSlot = this.inventorySlots.getSlot(36)
           if (craftSlot.getStack.isEmpty || recipe.get.getRecipeOutput.canStack(craftSlot.getStack))
             PacketHandler.INSTANCE.sendToServer(new MessageCraftItem(recipe.get))
@@ -187,18 +161,6 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     super.drawScreen(mouseX, mouseY, partialTicks)
     drawRecipeItems(partialTicks)
     renderHoveredToolTip(mouseX, mouseY)
-
-
-
-  }
-
-  override def drawGuiContainerForegroundLayer(mouseX: Int, mouseY: Int): Unit = {
-    val string = s"$currentPage/$maxPage"
-    this.fontRenderer.drawString(string, 172 - (string.length - 4) * 3, 26, 0)
-
-    this.fontRenderer.drawString(I18n.format("container.crafting"), 8, 6, 4210752)
-    this.fontRenderer.drawString(I18n.format("container.inventory"), 8, 98, 4210752)
-
   }
 
   // Draws all the recipe items over the crafting buttons
@@ -222,11 +184,6 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
 
   }
 
-  def renderRecipeBoxTooltip(mouseX: Int, mouseY: Int): Unit = {
-    GlStateManager.pushMatrix()
-    GuiUtils.drawGradientRect(0, mouseX + 12, mouseY - 12, mouseX + 54 + 12, mouseY + 54 - 12, -267386864, -267386864)
-    GlStateManager.popMatrix()
-  }
   override def renderHoveredToolTip(mouseX: Int, mouseY: Int) = {
     super.renderHoveredToolTip(mouseX, mouseY)
     val tooltipButton = buttonList.take(32).find(b => b.enabled && b.isMouseOver)
@@ -240,6 +197,21 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     else
       hoveredRecipe = None
 
+  }
+
+  override def drawGuiContainerForegroundLayer(mouseX: Int, mouseY: Int): Unit = {
+    val string = s"$currentPage"
+    this.fontRenderer.drawString(string, 172 - (string.length - 4) * 3, 26, 0)
+
+    this.fontRenderer.drawString(I18n.format("container.crafting"), 8, 6, 4210752)
+    this.fontRenderer.drawString(I18n.format("container.inventory"), 8, 98, 4210752)
+
+  }
+
+  def renderRecipeBoxTooltip(mouseX: Int, mouseY: Int): Unit = {
+    GlStateManager.pushMatrix()
+    GuiUtils.drawGradientRect(0, mouseX + 12, mouseY - 12, mouseX + 54 + 12, mouseY + 54 - 12, -267386864, -267386864)
+    GlStateManager.popMatrix()
   }
 
   override def hasClickedOutside(mouseX: Int, mouseY: Int, left: Int, top: Int): Boolean = {

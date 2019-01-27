@@ -7,9 +7,9 @@ import net.minecraft.util.ResourceLocation
 import net.minecraftforge.fml.common.network.simpleimpl.{IMessage, IMessageHandler, MessageContext}
 import net.minecraftforge.fml.common.registry.ForgeRegistries
 import pfister.quickercrafting.QuickerCrafting
-import pfister.quickercrafting.client.RecipeCalculator
-import pfister.quickercrafting.common.Implicits.ExtItemStack
 import pfister.quickercrafting.common.gui.ContainerQuickerCrafting
+import pfister.quickercrafting.common.util.ExtensionClasses.ExtItemStack
+import pfister.quickercrafting.common.util.RecipeCalculator
 
 import scala.util.Try
 
