@@ -95,6 +95,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
   this.xSize = 208
   this.ySize = 192
   //
+
   inventorySlots.addListener(this)
 
   private var hoveredRecipe: Option[IRecipe] = None

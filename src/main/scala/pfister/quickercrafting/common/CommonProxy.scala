@@ -10,6 +10,7 @@ import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.common.gui.GuiHandler
 import pfister.quickercrafting.common.item.ItemGuiTester
 import pfister.quickercrafting.common.network.PacketHandler
+import pfister.quickercrafting.common.util.RecipeCalculator
 
 
 class CommonProxy {
@@ -30,6 +31,8 @@ class CommonProxy {
   @EventHandler
   def init(event:FMLInitializationEvent): Unit = {
     NetworkRegistry.INSTANCE.registerGuiHandler(QuickerCrafting, GuiHandler)
+    // Force load RecipeCalculator to sort recipes prematurely
+    RecipeCalculator.SortedRecipes
   }
 
   // Post Init is where your mod usually does things which rely upon other mods.
@@ -37,7 +40,6 @@ class CommonProxy {
   // * Mod compatibility, or anything which depends on other mods’ init phases being finished.
   @EventHandler
   def postInit(event: FMLPostInitializationEvent): Unit = {
-
 
   }
 
