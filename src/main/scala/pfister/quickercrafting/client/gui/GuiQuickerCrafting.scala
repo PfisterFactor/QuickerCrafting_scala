@@ -223,6 +223,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
       super.hasClickedOutside(mouseX, mouseY, left, top)
   }
 
+
   override def sendWindowProperty(containerIn: Container, varToUpdate: Int, newValue: Int): Unit = {}
 
   override def sendAllWindowProperties(containerIn: Container, inventory: IInventory): Unit = {}

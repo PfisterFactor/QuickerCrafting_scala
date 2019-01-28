@@ -5,11 +5,12 @@ import net.minecraft.entity.player.{EntityPlayer, InventoryPlayer}
 import net.minecraft.inventory._
 import net.minecraft.item.ItemStack
 
-
+class NoDragSlot(inv: IInventory, index: Int, xPos: Int, yPos: Int) extends Slot(inv, index, xPos, yPos) {
+  override def isItemValid(stack: ItemStack): Boolean = false
+}
 class ContainerQuickerCrafting(val PlayerInv: InventoryPlayer) extends Container {
   val craftResult = new InventoryBasic("", false, 1)
   val recipeHelper = new RecipeItemHelper()
-
 
   // Handle the player's inventory rendering
   for (
@@ -19,9 +20,9 @@ class ContainerQuickerCrafting(val PlayerInv: InventoryPlayer) extends Container
 
   for (hotbarIndex <- 0 until 9)
     addSlotToContainer(new Slot(PlayerInv, hotbarIndex, 8 + hotbarIndex * 18, 168))
-  //
 
-  addSlotToContainer(new Slot(craftResult, 0, 176, 78))
+  //
+  addSlotToContainer(new NoDragSlot(craftResult, 0, 176, 78))
 
 
   override def canInteractWith(playerIn: EntityPlayer): Boolean = {

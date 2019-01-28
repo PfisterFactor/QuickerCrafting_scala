@@ -10,7 +10,7 @@ import scala.collection.JavaConversions._
 object ExtensionClasses {
 
   implicit class ExtItemStack(itemStack: ItemStack) {
-    def canStack(other: ItemStack): Boolean = !itemStack.isEmpty && !other.isEmpty && itemStack.isItemEqual(other) && itemStack.isStackable && (!itemStack.getHasSubtypes || (itemStack.getItemDamage == other.getItemDamage)) && ItemStack.areItemStackTagsEqual(itemStack, other)
+    def canStack(other: ItemStack): Boolean = !itemStack.isEmpty && !other.isEmpty && itemStack.isItemEqual(other) && itemStack.isStackable && (!itemStack.getHasSubtypes || (itemStack.getItemDamage == other.getItemDamage)) && ItemStack.areItemStackTagsEqual(itemStack, other) && other.getCount + itemStack.getCount <= other.getMaxStackSize
   }
 
   implicit class ExtRecipeItemHelper(recipeItemHelper: RecipeItemHelper) {
