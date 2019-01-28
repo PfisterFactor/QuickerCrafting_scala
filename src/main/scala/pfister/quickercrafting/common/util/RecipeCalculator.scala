@@ -1,5 +1,6 @@
 package pfister.quickercrafting.common.util
 
+import net.minecraft.creativetab.CreativeTabs
 import net.minecraft.entity.player.InventoryPlayer
 import net.minecraft.item._
 import net.minecraft.item.crafting.{IRecipe, Ingredient}
@@ -33,12 +34,12 @@ object RecipeCalculator {
 
           val blockX = itemX.asInstanceOf[ItemBlock].getBlock
           val blockY = itemY.asInstanceOf[ItemBlock].getBlock
-          // Full blocks should be put first
-          val isFullBlockX = blockX.isFullBlock(blockX.getDefaultState)
-          val isFullBlockY = blockY.isFullBlock(blockY.getDefaultState)
-          if (isFullBlockX && !isFullBlockY)
+          // Full blocks/building blocks should be put first
+          val isBuildingOrFullBlockX = blockX.isFullBlock(blockX.getDefaultState) || blockX.getCreativeTabToDisplayOn == CreativeTabs.BUILDING_BLOCKS
+          val isBuildingOrFullBlockY = blockY.isFullBlock(blockY.getDefaultState) || blockY.getCreativeTabToDisplayOn == CreativeTabs.BUILDING_BLOCKS
+          if (isBuildingOrFullBlockX && !isBuildingOrFullBlockY)
             return -1
-          else if (!isFullBlockX && isFullBlockY)
+          else if (!isBuildingOrFullBlockX && isBuildingOrFullBlockY)
             return 1
           // Otherwise just do a default comparison
           var comparison = blockX.getClass.getName.compareTo(blockY.getClass.getName)
