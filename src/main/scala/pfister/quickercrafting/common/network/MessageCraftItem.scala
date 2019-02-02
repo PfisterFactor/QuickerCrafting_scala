@@ -8,7 +8,6 @@ import net.minecraftforge.fml.common.network.simpleimpl.{IMessage, IMessageHandl
 import net.minecraftforge.fml.common.registry.ForgeRegistries
 import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.common.gui.ContainerQuickerCrafting
-import pfister.quickercrafting.common.util.ExtensionClasses.ExtItemStack
 import pfister.quickercrafting.common.util.RecipeCalculator
 
 import scala.util.Try
@@ -58,7 +57,7 @@ class MessageCraftItemHandler extends IMessageHandler[MessageCraftItem, IMessage
 
     val container = player.openContainer.asInstanceOf[ContainerQuickerCrafting]
 
-    if (!message.Recipe.getRecipeOutput.canStack(container.craftResult.getStackInSlot(0)) && !container.craftResult.isEmpty) {
+    if (!container.canFitStackInCraftResult(message.Recipe.getRecipeOutput)) {
       QuickerCrafting.Log.warn(s"MessageCraftItemHandler: Cannot stack '${message.RecipeString}' into item slot on server.")
       return null
     }

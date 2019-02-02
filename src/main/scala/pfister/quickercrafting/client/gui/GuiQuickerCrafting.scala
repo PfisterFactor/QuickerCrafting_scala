@@ -1,13 +1,13 @@
 package pfister.quickercrafting.client.gui
 
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiButton
 import net.minecraft.client.gui.inventory.GuiContainer
-import net.minecraft.client.gui.{GuiButton, GuiButtonImage}
-import net.minecraft.client.renderer.{GlStateManager, RenderHelper}
+import net.minecraft.client.renderer.{GlStateManager, OpenGlHelper, RenderHelper}
 import net.minecraft.client.resources.I18n
 import net.minecraft.client.util.RecipeItemHelper
 import net.minecraft.entity.player.InventoryPlayer
-import net.minecraft.inventory.{Container, IContainerListener, IInventory}
+import net.minecraft.inventory._
 import net.minecraft.item.ItemStack
 import net.minecraft.item.crafting.IRecipe
 import net.minecraft.util.{NonNullList, ResourceLocation}
@@ -16,9 +16,8 @@ import net.minecraftforge.fml.client.config.GuiUtils
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
 import pfister.quickercrafting.QuickerCrafting
-import pfister.quickercrafting.common.gui.{ContainerQuickerCrafting, GuiButtonQuickRecipe}
+import pfister.quickercrafting.common.gui.ContainerQuickerCrafting
 import pfister.quickercrafting.common.network.{MessageCraftItem, PacketHandler}
-import pfister.quickercrafting.common.util.ExtensionClasses.ExtItemStack
 import pfister.quickercrafting.common.util.RecipeCalculator
 
 import scala.collection.JavaConversions._
@@ -26,7 +25,7 @@ import scala.util.Try
 
 @EventBusSubscriber
 object GuiQuickCrafting {
-  final val TEXTURE: ResourceLocation = new ResourceLocation(QuickerCrafting.MOD_ID, "textures/gui/quickercrafting.png")
+  final val TEXTURE: ResourceLocation = new ResourceLocation(QuickerCrafting.MOD_ID, "textures/gui/quickercrafting_new.png")
 
   def canStack(itemStack1: ItemStack, itemStack2: ItemStack): Boolean = !itemStack1.isEmpty && !itemStack2.isEmpty && itemStack1.isItemEqual(itemStack2) && itemStack1.isStackable && (!itemStack1.getHasSubtypes || (itemStack1.getItemDamage == itemStack2.getItemDamage)) && ItemStack.areItemStackTagsEqual(itemStack1, itemStack2)
 
@@ -92,8 +91,8 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
   private var currentPage: Int = 1
 
   // Set size of window
-  this.xSize = 208
-  this.ySize = 192
+  this.xSize = 207
+  this.ySize = 172
   //
 
   inventorySlots.addListener(this)
@@ -105,10 +104,10 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
   override def initGui(): Unit = {
     super.initGui()
     // Populate the recipe list with buttons
-    for (y <- 0 until 4; x <- 0 until 8)
-      buttonList.add(new GuiButtonQuickRecipe(y * 8 + x, this.guiLeft + 7 + x * 20, this.guiTop + 16 + y * 20, 20, 20, 236, 15, 20, GuiQuickCrafting.TEXTURE))
-    buttonList.add(new GuiButtonImage(33, this.guiLeft + 178, this.guiTop + 16, 12, 7, 232, 0, 7, GuiQuickCrafting.TEXTURE))
-    buttonList.add(new GuiButtonImage(34, this.guiLeft + 178, this.guiTop + 36, 12, 7, 244, 0, 7, GuiQuickCrafting.TEXTURE))
+    //for (y <- 0 until 4; x <- 0 until 8)
+    //buttonList.add(new GuiButtonQuickRecipe(y * 8 + x, this.guiLeft + 7 + x * 20, this.guiTop + 16 + y * 20, 20, 20, 236, 15, 20, GuiQuickCrafting.TEXTURE))
+    //buttonList.add(new GuiButtonImage(33, this.guiLeft + 178, this.guiTop + 16, 12, 7, 232, 0, 7, GuiQuickCrafting.TEXTURE))
+    //buttonList.add(new GuiButtonImage(34, this.guiLeft + 178, this.guiTop + 36, 12, 7, 244, 0, 7, GuiQuickCrafting.TEXTURE))
   }
 
   // Fired on change in inventory
@@ -128,7 +127,13 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     inventorySlots.detectAndSendChanges()
   }
 
-
+  override def mouseClicked(mouseX: Int, mouseY: Int, mouseButton: Int): Unit = {
+    super.mouseClicked(mouseX, mouseY, mouseButton)
+    if (hoveredRecipe.isDefined) {
+      if (inventorySlots.asInstanceOf[ContainerQuickerCrafting].canFitStackInCraftResult(hoveredRecipe.get.getRecipeOutput))
+        PacketHandler.INSTANCE.sendToServer(new MessageCraftItem(hoveredRecipe.get))
+    }
+  }
   override def actionPerformed(button: GuiButton): Unit = {
     button.id match {
       case 33 => currentPage = Math.max(currentPage - 1, 1)
@@ -138,9 +143,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
       case id if id < 33 =>
         val recipe = Try(cachedRecipes((currentPage - 1) * 32 + id))
         if (recipe.isSuccess) {
-          val craftSlot = this.inventorySlots.getSlot(36)
-          if (craftSlot.getStack.isEmpty || recipe.get.getRecipeOutput.canStack(craftSlot.getStack))
-            PacketHandler.INSTANCE.sendToServer(new MessageCraftItem(recipe.get))
+
         }
       case _ =>
     }
@@ -153,6 +156,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     // Bind the GUI texture
     this.mc.getTextureManager.bindTexture(GuiQuickCrafting.TEXTURE)
     this.drawTexturedModalRect(this.guiLeft, this.guiTop, 0, 0, this.xSize, this.ySize)
+    drawRecipeSlots(partialTicks, mouseX, mouseY)
 
   }
 
@@ -160,52 +164,59 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
   override def drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float): Unit = {
     drawDefaultBackground()
     super.drawScreen(mouseX, mouseY, partialTicks)
-    drawRecipeItems(partialTicks)
     renderHoveredToolTip(mouseX, mouseY)
   }
 
-  // Draws all the recipe items over the crafting buttons
-  def drawRecipeItems(partialTicks: Float): Unit = {
-    buttonList.take(32).foreach(button => {
-      val recipe = Try(cachedRecipes((currentPage - 1) * 32 + button.id)).toOption
+  def drawRecipeSlots(partialTicks: Float, mouseX: Int, mouseY: Int): Unit = {
+    GlStateManager.pushMatrix()
+    GlStateManager.translate(this.guiLeft, this.guiTop, 0.0F)
+    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
+    GlStateManager.enableRescaleNormal()
+    OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240.0F, 240.0F)
+    RenderHelper.disableStandardItemLighting()
+    RenderHelper.enableGUIStandardItemLighting()
+    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
+    hoveredRecipe = None
+    val fakeInventory = new InventoryBasic("", false, 1)
+    val fakeSlot = new Slot(fakeInventory, 0, 0, 0)
 
-      if (recipe.isDefined) {
-        GlStateManager.pushMatrix()
-        GlStateManager.translate(2, 2, 0)
-        RenderHelper.disableStandardItemLighting()
-        RenderHelper.enableGUIStandardItemLighting()
-        val itemstack = recipe.get.getRecipeOutput
-        drawItemStack(itemstack, button.x, button.y, "" + itemstack.getCount)
-        button.enabled = true
-        GlStateManager.popMatrix()
+    val recipeIndexOffsetYMult = 0
+    for (y <- 0 until 3; x <- 0 until 9) {
+      val recipeIndex = y * 9 + x + recipeIndexOffsetYMult * 9
+      val recipe = Try(cachedRecipes.get(recipeIndex))
+      if (recipe.isSuccess) {
+        fakeSlot.xPos = 8 + x * 18
+        fakeSlot.yPos = 20 + y * 18
+        fakeSlot.putStack(recipe.get.getRecipeOutput)
+        this.drawSlot(fakeSlot)
+        if (this.isPointInRegion(fakeSlot.xPos, fakeSlot.yPos, 16, 16, mouseX, mouseY)) {
+          hoveredRecipe = Some(recipe.get)
+          GlStateManager.disableLighting()
+          GlStateManager.disableDepth()
+          GlStateManager.colorMask(true, true, true, false)
+          this.drawGradientRect(fakeSlot.xPos, fakeSlot.yPos, fakeSlot.xPos + 16, fakeSlot.yPos + 16, -2130706433, -2130706433)
+          GlStateManager.colorMask(true, true, true, true)
+          GlStateManager.enableLighting()
+          GlStateManager.enableDepth()
+        }
       }
-      else
-        button.enabled = false
-    })
-
+      else {
+        // Todo: Disabled slot rendering
+      }
+    }
+    GlStateManager.popMatrix()
   }
 
   override def renderHoveredToolTip(mouseX: Int, mouseY: Int) = {
     super.renderHoveredToolTip(mouseX, mouseY)
-    val tooltipButton = buttonList.take(32).find(b => b.enabled && b.isMouseOver)
-    if (tooltipButton.isDefined) {
-      val recipe = Try(cachedRecipes.get((currentPage - 1) * 32 + tooltipButton.get.id)).toOption
-      if (recipe.isDefined) {
-        hoveredRecipe = recipe
-        renderToolTip(recipe.get.getRecipeOutput, mouseX, mouseY)
-      }
+    if (hoveredRecipe.isDefined) {
+      renderToolTip(hoveredRecipe.get.getRecipeOutput, mouseX, mouseY)
     }
-    else
-      hoveredRecipe = None
-
   }
 
   override def drawGuiContainerForegroundLayer(mouseX: Int, mouseY: Int): Unit = {
-    val string = s"$currentPage"
-    this.fontRenderer.drawString(string, 172 - (string.length - 4) * 3, 26, 0)
-
     this.fontRenderer.drawString(I18n.format("container.crafting"), 8, 6, 4210752)
-    this.fontRenderer.drawString(I18n.format("container.inventory"), 8, 98, 4210752)
+    this.fontRenderer.drawString(I18n.format("container.inventory"), 8, 78, 4210752)
 
   }
 
@@ -222,7 +233,6 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     else
       super.hasClickedOutside(mouseX, mouseY, left, top)
   }
-
 
   override def sendWindowProperty(containerIn: Container, varToUpdate: Int, newValue: Int): Unit = {}
 

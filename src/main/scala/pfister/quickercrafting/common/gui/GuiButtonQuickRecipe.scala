@@ -5,8 +5,7 @@ import net.minecraft.client.gui.GuiButtonImage
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.util.ResourceLocation
 
-// Simple extension class to implemented rendering disabled buttons on GuiButtonImage.
-// I don't know why it's not there in the first place.
+
 class GuiButtonQuickRecipe(id: Int, x: Int, y: Int, width: Int, height: Int, xtext: Int, ytext: Int, ydiff: Int, res: ResourceLocation) extends GuiButtonImage(id, x, y, width, height, xtext, ytext, ydiff, res) {
 
 
