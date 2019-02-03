@@ -46,8 +46,12 @@ class ContainerQuickerCrafting(val PlayerInv: InventoryPlayer) extends Container
 
   override def onContainerClosed(playerIn: EntityPlayer): Unit = {
     super.onContainerClosed(playerIn)
-    for (i <- 0 until craftResult.getSizeInventory)
-      playerIn.dropItem(craftResult.removeStackFromSlot(i), false)
+    for (i <- 0 until craftResult.getSizeInventory) {
+      val stack = craftResult.removeStackFromSlot(i)
+      if (!playerIn.inventory.addItemStackToInventory(stack))
+        playerIn.dropItem(stack, false)
+    }
+
 
   }
 
