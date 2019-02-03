@@ -176,17 +176,19 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
     RenderHelper.disableStandardItemLighting()
     RenderHelper.enableGUIStandardItemLighting()
     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
+
     hoveredRecipe = None
     val fakeInventory = new InventoryBasic("", false, 1)
     val fakeSlot = new Slot(fakeInventory, 0, 0, 0)
 
     val recipeIndexOffsetYMult = 0
     for (y <- 0 until 3; x <- 0 until 9) {
+      fakeSlot.xPos = 8 + x * 18
+      fakeSlot.yPos = 20 + y * 18
       val recipeIndex = y * 9 + x + recipeIndexOffsetYMult * 9
       val recipe = Try(cachedRecipes.get(recipeIndex))
       if (recipe.isSuccess) {
-        fakeSlot.xPos = 8 + x * 18
-        fakeSlot.yPos = 20 + y * 18
+
         fakeSlot.putStack(recipe.get.getRecipeOutput)
         this.drawSlot(fakeSlot)
         if (this.isPointInRegion(fakeSlot.xPos, fakeSlot.yPos, 16, 16, mouseX, mouseY)) {
@@ -201,7 +203,13 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Co
         }
       }
       else {
-        // Todo: Disabled slot rendering
+        GlStateManager.disableLighting()
+        GlStateManager.disableDepth()
+        GlStateManager.colorMask(true, true, true, false)
+        this.drawGradientRect(fakeSlot.xPos, fakeSlot.yPos, fakeSlot.xPos + 16, fakeSlot.yPos + 16, 0x55000000, 0x55000000)
+        GlStateManager.colorMask(true, true, true, true)
+        GlStateManager.enableLighting()
+        GlStateManager.enableDepth()
       }
     }
     GlStateManager.popMatrix()
