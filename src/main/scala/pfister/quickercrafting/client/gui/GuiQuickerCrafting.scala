@@ -14,13 +14,14 @@ import net.minecraftforge.client.event.RenderTooltipEvent
 import net.minecraftforge.fml.client.config.GuiUtils
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+import net.minecraftforge.fml.relauncher.Side
 import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.common.gui.ContainerQuickerCrafting
 import pfister.quickercrafting.common.network.{MessageCraftItem, PacketHandler}
 
 import scala.collection.JavaConversions._
 
-@EventBusSubscriber
+@EventBusSubscriber(Array(Side.CLIENT))
 object GuiQuickCrafting {
   final val TEXTURE: ResourceLocation = new ResourceLocation(QuickerCrafting.MOD_ID, "textures/gui/quickercrafting_new.png")
 
