@@ -49,18 +49,17 @@ class MessageCraftItemHandler extends IMessageHandler[MessageCraftItem, IMessage
     }
 
     val player = ctx.getServerHandler.player
-    val recipeCalculator = new RecipeCalculator(player.inventory)
     if (!player.openContainer.isInstanceOf[ContainerQuickerCrafting]) {
       QuickerCrafting.Log.warn(s"MessageCraftItemHandler: ContainerQuickerCrafting is not open on the server.")
       return null
     }
 
     val container = player.openContainer.asInstanceOf[ContainerQuickerCrafting]
-
     if (!container.canFitStackInCraftResult(message.Recipe.getRecipeOutput)) {
       QuickerCrafting.Log.warn(s"MessageCraftItemHandler: Cannot stack '${message.RecipeString}' into item slot on server.")
       return null
     }
+    val recipeCalculator = new RecipeCalculator(player.inventory)
     val itemsToRemove = recipeCalculator.tryCraftRecipe(message.Recipe)
 
     if (itemsToRemove.isEmpty) {
