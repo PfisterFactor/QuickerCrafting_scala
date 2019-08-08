@@ -18,6 +18,7 @@ import net.minecraftforge.fml.relauncher.Side
 import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.common.gui.ContainerQuickerCrafting
 import pfister.quickercrafting.common.network.{MessageCraftItem, PacketHandler}
+import pfister.quickercrafting.common.util.CraftHandler
 
 import scala.collection.JavaConversions._
 
@@ -35,7 +36,7 @@ object GuiQuickCrafting {
     val recipe = gui.getHoveredRecipe
     if (recipe.isEmpty) return
 
-    val itemMap = gui.inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].RecipeCalculator.tryCraftRecipe(recipe.get)
+    val itemMap = gui.inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].RecipeCalculator.doCraft(recipe.get)
 
     if (itemMap.isEmpty) return
 
@@ -121,7 +122,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
       super.handleMouseClick(slotIn, slotId, mouseButton, `type`)
     else
     if (hoveredRecipe.isDefined) {
-      if (inventorySlots.asInstanceOf[ContainerQuickerCrafting].canFitStackInCraftResult(hoveredRecipe.get.getRecipeOutput))
+      if (CraftHandler.tryCraftRecipe(this.inventorySlots.asInstanceOf[ContainerQuickerCrafting], hoveredRecipe.get))
         PacketHandler.INSTANCE.sendToServer(new MessageCraftItem(hoveredRecipe.get))
     }
   }

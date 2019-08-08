@@ -70,7 +70,7 @@ class RecipeCalculator(container: ContainerQuickerCrafting) {
   // Attempts to craft a recipe using the players inventory
   // If success, returns a list of indexes to the passed in item list corresponding to ingredients used and amount used
   // If failure, returns None
-  def tryCraftRecipe(recipe: IRecipe): Option[Map[Int, Int]] = {
+  def doCraft(recipe: IRecipe): Option[Map[Int, Int]] = {
     // A map of all the items and their amounts used in the recipe
     val usedItemMap: mutable.Map[Int, Int] = mutable.Map()
     val itemStacks = container.getInventory
@@ -102,7 +102,7 @@ class RecipeCalculator(container: ContainerQuickerCrafting) {
   }
 
   // Determines if the inventory can craft a recipe
-  def canCraft(recipe: IRecipe): Boolean = tryCraftRecipe(recipe).isDefined
+  def canCraft(recipe: IRecipe): Boolean = doCraft(recipe).isDefined
 
   def getRecipeIterator: Iterator[IRecipe] = {
     RecipeCalculator.SortedRecipes.toIterator.filter(recipe => {
