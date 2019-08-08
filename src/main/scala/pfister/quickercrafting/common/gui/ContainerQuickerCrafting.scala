@@ -62,4 +62,5 @@ class ContainerQuickerCrafting(val PlayerInv: InventoryPlayer) extends Container
     slot.putStack(ItemStack.EMPTY)
     ItemStack.EMPTY
   }
+
 }

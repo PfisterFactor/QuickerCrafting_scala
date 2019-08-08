@@ -1,13 +1,14 @@
 package pfister.quickercrafting.common.util
 
 import net.minecraft.creativetab.CreativeTabs
-import net.minecraft.entity.player.InventoryPlayer
 import net.minecraft.item._
 import net.minecraft.item.crafting.{IRecipe, Ingredient}
 import net.minecraftforge.fml.common.registry.ForgeRegistries
+import pfister.quickercrafting.common.gui.ContainerQuickerCrafting
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.util.control.Breaks._
 
 object RecipeCalculator {
 
@@ -63,39 +64,36 @@ object RecipeCalculator {
       }
     }).toArray
 }
-class RecipeCalculator(playerInv: InventoryPlayer) {
 
-  // A copy of the player's inventory to avoid modifying itemstacks in the players inventory
-  private val recipeWorkingInv: Array[ItemStack] = playerInv.mainInventory.map(_.copy).toArray
-  def updateWorkingInv(index: Int, stack: ItemStack): Unit = {
-    recipeWorkingInv(index) = stack.copy()
-  }
+class RecipeCalculator(container: ContainerQuickerCrafting) {
 
   // Attempts to craft a recipe using the players inventory
-  // If success, returns a list of indexes to the players inventory corresponding to ingredients used and amount used
+  // If success, returns a list of indexes to the passed in item list corresponding to ingredients used and amount used
   // If failure, returns None
   def tryCraftRecipe(recipe: IRecipe): Option[Map[Int, Int]] = {
     // A map of all the items and their amounts used in the recipe
     val usedItemMap: mutable.Map[Int, Int] = mutable.Map()
-
+    val itemStacks = container.getInventory
     val returnVal = recipe.getIngredients.filterNot(_ == Ingredient.EMPTY).forall(ingr => {
       // Find an itemstack index where the count is greater than 0 and the ingredient accepts the itemstack for crafting
-      val index = recipeWorkingInv.indexWhere(itemstack => itemstack.getCount > 0 && ingr.apply(itemstack))
+      var index = -1
+      breakable {
+        // Backwards iterating so we prioritize using the craft result slots
+        for (i <- itemStacks.size() - 1 to(0, -1)) {
+          val itemstack = itemStacks(i)
+          if (itemstack.getCount > 0 && ingr.apply(itemstack) && itemstack.getCount - usedItemMap.getOrElse(i, 0) > 0) {
+            index = i
+            break()
+          }
+        }
+      }
       if (index != -1) {
-        val item = recipeWorkingInv(index)
-        // Decrement the items count, it can be negative because we fix the item amounts in the end
-        item.setCount(item.getCount - 1)
         // Mark the item needed and how much of it would be needed
         usedItemMap.update(index, usedItemMap.getOrDefault(index, 0) + 1)
         true
       }
       else
         false
-    })
-    // Fix the item amounts on our working inventory
-    usedItemMap.foreach(pair => {
-      val itemstack = recipeWorkingInv(pair._1)
-      itemstack.setCount(itemstack.getCount + pair._2)
     })
     if (returnVal)
       Some(usedItemMap.toMap)
@@ -106,7 +104,7 @@ class RecipeCalculator(playerInv: InventoryPlayer) {
   // Determines if the inventory can craft a recipe
   def canCraft(recipe: IRecipe): Boolean = tryCraftRecipe(recipe).isDefined
 
-  def getRecipeIterator(): Iterator[IRecipe] = {
+  def getRecipeIterator: Iterator[IRecipe] = {
     RecipeCalculator.SortedRecipes.toIterator.filter(recipe => {
       canCraft(recipe)
     })

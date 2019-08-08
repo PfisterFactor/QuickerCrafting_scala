@@ -40,7 +40,7 @@ object GuiQuickCrafting {
     if (itemMap.isEmpty) return
 
     val packedItemsAndCounts = itemMap.get.foldLeft(Map[Int, Int]())((acc, pair) => {
-      val stackPacked = RecipeItemHelper.pack(Minecraft.getMinecraft.player.inventory.mainInventory.get(pair._1))
+      val stackPacked = RecipeItemHelper.pack(Minecraft.getMinecraft.player.openContainer.inventoryItemStacks.get(pair._1))
       acc.updated(stackPacked, acc.getOrDefault(stackPacked, 0) + pair._2)
     })
 

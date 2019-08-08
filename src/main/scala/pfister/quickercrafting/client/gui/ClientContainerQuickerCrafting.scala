@@ -4,6 +4,7 @@ import net.minecraft.entity.player.InventoryPlayer
 import net.minecraft.inventory._
 import net.minecraft.item.ItemStack
 import net.minecraft.item.crafting.IRecipe
+import net.minecraft.util.NonNullList
 import net.minecraftforge.fml.relauncher.{Side, SideOnly}
 import pfister.quickercrafting.common.gui.{ContainerQuickerCrafting, NoDragSlot}
 import pfister.quickercrafting.common.util.RecipeCalculator
@@ -20,21 +21,22 @@ class ClientSlot(inv: IInventory, index: Int, xPos: Int, yPos: Int) extends NoDr
 
 @SideOnly(Side.CLIENT)
 class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends ContainerQuickerCrafting(playerInv) {
-  val RecipeCalculator: RecipeCalculator = new RecipeCalculator(playerInv)
+  val RecipeCalculator: RecipeCalculator = new RecipeCalculator(this)
   val clientSlotsStart = inventorySlots.size()
   // Stores all the recipes
   val recipeInventory = new InventoryBasic("", false, 27)
   var slotRowYOffest: Int = 0
-  private var recipeStream: Stream[IRecipe] = _
 
   for (y <- 0 until 3; x <- 0 until 9) {
     addSlotToContainer(new ClientSlot(recipeInventory, y * 9 + x, 8 + x * 18, 20 + y * 18))
   }
 
   def updateDisplay(currentScroll: Double): Unit = {
-    slotRowYOffest = 0 // currentScroll trickery
+    slotRowYOffest = 0
+    //(currentScroll * (recipeStream.size()-1 / 9)).toInt
+    val iterator = RecipeCalculator.getRecipeIterator.drop(slotRowYOffest * 9)
     inventorySlots.drop(clientSlotsStart).foreach(slot => {
-      val recipe = Try(recipeStream.get(slot.getSlotIndex + slotRowYOffest * 9))
+      val recipe = Try(iterator.next())
 
       if (recipe.isSuccess) {
         slot.asInstanceOf[ClientSlot].enabled = true
@@ -50,8 +52,9 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
   def getRecipeForSlot(slotNum: Int): Option[IRecipe] = {
     if (slotNum < clientSlotsStart || slotNum >= inventorySlots.size())
       None
-    else
-      Try(recipeStream.get(inventorySlots.get(slotNum).getSlotIndex + slotRowYOffest * 9)).toOption
+    else {
+      Try(RecipeCalculator.getRecipeIterator.drop(inventorySlots.get(slotNum).getSlotIndex + slotRowYOffest * 9).next()).toOption
+    }
   }
 
   // Only sends changes for the slots shared between server and client
@@ -69,20 +72,19 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
 
         this.inventoryItemStacks.set(i, itemstack1)
 
-        if (true) {
+        if (clientStackChanged) {
           listeners.foreach(_.sendSlotContents(this, i, itemstack1))
-          val slot = this.getSlot(i)
-          if (slot.inventory.isInstanceOf[InventoryPlayer])
-            updateRecipes(slot.getSlotIndex, itemstack1)
         }
       }
 
     }
   }
 
-  def updateRecipes(invIndex: Int, stack: ItemStack): Unit = {
-    RecipeCalculator.updateWorkingInv(invIndex, stack)
-    recipeStream = RecipeCalculator.getRecipeIterator().toStream
+  override def getInventory: NonNullList[ItemStack] = {
+    val list = NonNullList.create[ItemStack]()
+    list.addAll(super.getInventory.take(clientSlotsStart))
+    list
   }
+
 
 }

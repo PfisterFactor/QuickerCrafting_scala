@@ -59,7 +59,7 @@ class MessageCraftItemHandler extends IMessageHandler[MessageCraftItem, IMessage
       QuickerCrafting.Log.warn(s"MessageCraftItemHandler: Cannot stack '${message.RecipeString}' into item slot on server.")
       return null
     }
-    val recipeCalculator = new RecipeCalculator(player.inventory)
+    val recipeCalculator = new RecipeCalculator(container)
     val itemsToRemove = recipeCalculator.tryCraftRecipe(message.Recipe)
 
     if (itemsToRemove.isEmpty) {
@@ -67,7 +67,8 @@ class MessageCraftItemHandler extends IMessageHandler[MessageCraftItem, IMessage
       return null
     }
     itemsToRemove.get.foreach(pair => {
-      player.inventory.decrStackSize(pair._1, pair._2)
+      val slot = container.getSlot(pair._1)
+      slot.decrStackSize(pair._2)
     })
     val recipeOutput = message.Recipe.getRecipeOutput.copy()
     val leftOver = container.craftResult.addItem(recipeOutput)
