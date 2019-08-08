@@ -56,7 +56,6 @@ class MessageCraftItemHandler extends IMessageHandler[MessageCraftItem, IMessage
 
     val container = player.openContainer.asInstanceOf[ContainerQuickerCrafting]
     CraftHandler.tryCraftRecipe(container, message.Recipe)
-
     null
   }
 }

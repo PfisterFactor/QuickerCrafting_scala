@@ -40,6 +40,9 @@ class ContainerQuickerCrafting(val PlayerInv: InventoryPlayer) extends Container
     }
     false
   }
+
+  def isCraftResultIndex(index: Int): Boolean = getSlot(index).isInstanceOf[NoDragSlot]
+
   override def canInteractWith(playerIn: EntityPlayer): Boolean = {
     true
   }

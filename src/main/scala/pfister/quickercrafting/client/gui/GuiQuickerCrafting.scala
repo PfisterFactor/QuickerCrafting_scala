@@ -139,9 +139,9 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
 
   // Draws the buttons and stuff on top of the background
   override def drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float): Unit = {
+    inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].updateDisplay(currentScroll)
     drawDefaultBackground()
     super.drawScreen(mouseX, mouseY, partialTicks)
-    inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].updateDisplay(currentScroll)
     GlStateManager.pushMatrix()
     GlStateManager.translate(guiLeft, guiTop, 0)
     GlStateManager.disableLighting()
