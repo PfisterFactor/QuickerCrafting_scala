@@ -10,11 +10,13 @@ import net.minecraft.inventory._
 import net.minecraft.item.ItemStack
 import net.minecraft.item.crafting.IRecipe
 import net.minecraft.util.ResourceLocation
+import net.minecraft.util.math.MathHelper
 import net.minecraftforge.client.event.RenderTooltipEvent
 import net.minecraftforge.fml.client.config.GuiUtils
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
 import net.minecraftforge.fml.relauncher.Side
+import org.lwjgl.input.Mouse
 import pfister.quickercrafting.QuickerCrafting
 import pfister.quickercrafting.common.gui.ContainerQuickerCrafting
 import pfister.quickercrafting.common.network.{MessageCraftItem, PacketHandler}
@@ -23,7 +25,7 @@ import pfister.quickercrafting.common.util.CraftHandler
 import scala.collection.JavaConversions._
 
 @EventBusSubscriber(Array(Side.CLIENT))
-object GuiQuickCrafting {
+object GuiQuickerCrafting {
   final val TEXTURE: ResourceLocation = new ResourceLocation(QuickerCrafting.MOD_ID, "textures/gui/quickercrafting_new.png")
 
   def canStack(itemStack1: ItemStack, itemStack2: ItemStack): Boolean = !itemStack1.isEmpty && !itemStack2.isEmpty && itemStack1.isItemEqual(itemStack2) && itemStack1.isStackable && (!itemStack1.getHasSubtypes || (itemStack1.getItemDamage == itemStack2.getItemDamage)) && ItemStack.areItemStackTagsEqual(itemStack1, itemStack2)
@@ -85,37 +87,28 @@ object GuiQuickCrafting {
 class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new ClientContainerQuickerCrafting(playerInv)) {
 
 
-  // The position of the scroll bar, where 0 means the top and 1 means the bottom
-  private var currentScroll: Double = 0.0D
-  private var isScrolling = false
-  private var wasClicking = false
+  //
+  var Scrollbar: GuiScrollBar = _
 
   // Set size of window
   this.xSize = 207
   this.ySize = 172
-  //
+  // If the mouse was down the last frame
+  private var wasClicking = false
 
   private var hoveredRecipe: Option[IRecipe] = None
   def getHoveredRecipe: Option[IRecipe] = hoveredRecipe
 
   override def initGui(): Unit = {
     super.initGui()
-    // Populate the recipe list with buttons
-    //for (y <- 0 until 4; x <- 0 until 8)
-    //buttonList.add(new GuiButtonQuickRecipe(y * 8 + x, this.guiLeft + 7 + x * 20, this.guiTop + 16 + y * 20, 20, 20, 236, 15, 20, GuiQuickCrafting.TEXTURE))
-    //buttonList.add(new GuiButtonImage(33, this.guiLeft + 178, this.guiTop + 16, 12, 7, 232, 0, 7, GuiQuickCrafting.TEXTURE))
-    //buttonList.add(new GuiButtonImage(34, this.guiLeft + 178, this.guiTop + 36, 12, 7, 244, 0, 7, GuiQuickCrafting.TEXTURE))
+    Scrollbar = new GuiScrollBar(guiLeft, guiTop)
   }
-
-
-
 
   override def updateScreen(): Unit = {
     super.updateScreen()
 
     inventorySlots.detectAndSendChanges()
   }
-
 
   override def handleMouseClick(slotIn: Slot, slotId: Int, mouseButton: Int, `type`: ClickType): Unit = {
     if (slotId < inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].clientSlotsStart)
@@ -127,25 +120,48 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
     }
   }
 
-
   // Draws the background to the GUI
   override def drawGuiContainerBackgroundLayer(partialTicks: Float, mouseX: Int, mouseY: Int): Unit = {
     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
     // Bind the GUI texture
-    this.mc.getTextureManager.bindTexture(GuiQuickCrafting.TEXTURE)
+    this.mc.getTextureManager.bindTexture(GuiQuickerCrafting.TEXTURE)
     this.drawTexturedModalRect(this.guiLeft, this.guiTop, 0, 0, this.xSize, this.ySize)
 
   }
 
   // Draws the buttons and stuff on top of the background
   override def drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float): Unit = {
-    inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].updateDisplay(currentScroll)
+    inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].updateDisplay(Scrollbar.currentScroll)
+    Scrollbar.isEnabled = inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].shouldDisplayScrollbar
     drawDefaultBackground()
+    val isClicking: Boolean = Mouse.isButtonDown(0)
+    if (!wasClicking && isClicking && Scrollbar.isInScrollBarBounds(mouseX, mouseY))
+      Scrollbar.isScrolling = true
+    if (!isClicking)
+      Scrollbar.isScrolling = false
+
+    wasClicking = isClicking
+
+    if (Scrollbar.isScrolling) {
+      Scrollbar.currentScroll = (mouseY - (guiTop + GuiScrollBar.GUI_POS_Y)) / GuiScrollBar.SCROLLBAR_HEIGHT.toFloat
+      Scrollbar.currentScroll = MathHelper.clamp(Scrollbar.currentScroll, 0.0F, 1.0F)
+      //this.inventorySlots.asInstanceOf[GuiContainerCreative.ContainerCreative].scrollTo(this.currentScroll)
+    }
     super.drawScreen(mouseX, mouseY, partialTicks)
     GlStateManager.pushMatrix()
     GlStateManager.translate(guiLeft, guiTop, 0)
     GlStateManager.disableLighting()
     GlStateManager.disableDepth()
+    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
+    this.mc.getTextureManager.bindTexture(GuiQuickerCrafting.TEXTURE)
+    if (Scrollbar.isEnabled)
+      this.drawTexturedModalRect(GuiScrollBar.GUI_POS_X, MathHelper.clamp(GuiScrollBar.GUI_POS_Y - GuiScrollBar.TEX_HEIGHT / 2 + (GuiScrollBar.SCROLLBAR_HEIGHT * Scrollbar.currentScroll).toInt, GuiScrollBar.GUI_POS_Y, GuiScrollBar.GUI_POS_Y + GuiScrollBar.SCROLLBAR_HEIGHT - GuiScrollBar.TEX_HEIGHT - 1), GuiScrollBar.TEX_OFFSET_X, GuiScrollBar.TEX_OFFSET_Y, GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_HEIGHT)
+    else {
+      this.drawTexturedModalRect(GuiScrollBar.GUI_POS_X, GuiScrollBar.GUI_POS_Y, GuiScrollBar.TEX_OFFSET_X + GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_OFFSET_Y, GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_HEIGHT)
+      Scrollbar.currentScroll = 0
+    }
+
+
     GlStateManager.colorMask(true, true, true, false)
     inventorySlots.inventorySlots.filter(s => !s.isEnabled && s.isInstanceOf[ClientSlot]).foreach(slot =>
       drawGradientRect(slot.xPos, slot.yPos, slot.xPos + 16, slot.yPos + 16, 0x55000000, 0x55000000)
@@ -164,54 +180,6 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
     super.drawSlot(slotIn)
 
   }
-
-  //  def drawRecipeSlots(partialTicks: Float, mouseX: Int, mouseY: Int): Unit = {
-  //    GlStateManager.pushMatrix()
-  //    GlStateManager.translate(this.guiLeft, this.guiTop, 0.0F)
-  //    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
-  //    GlStateManager.enableRescaleNormal()
-  //    OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240.0F, 240.0F)
-  //    RenderHelper.disableStandardItemLighting()
-  //    RenderHelper.enableGUIStandardItemLighting()
-  //    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
-  //
-  //    hoveredRecipe = None
-  //    val fakeInventory = new InventoryBasic("", false, 1)
-  //    val fakeSlot = new Slot(fakeInventory, 0, 0, 0)
-  //
-  //    val recipeIndexOffsetYMult = 0
-  //    for (y <- 0 until 3; x <- 0 until 9) {
-  //      fakeSlot.xPos = 8 + x * 18
-  //      fakeSlot.yPos = 20 + y * 18
-  //      val recipeIndex = y * 9 + x + recipeIndexOffsetYMult * 9
-  //      val recipe = Try(cachedRecipes.get(recipeIndex))
-  //      if (recipe.isSuccess) {
-  //
-  //        fakeSlot.putStack(recipe.get.getRecipeOutput)
-  //        this.drawSlot(fakeSlot)
-  //        if (this.isPointInRegion(fakeSlot.xPos, fakeSlot.yPos, 16, 16, mouseX, mouseY)) {
-  //          hoveredRecipe = Some(recipe.get)
-  //          GlStateManager.disableLighting()
-  //          GlStateManager.disableDepth()
-  //          GlStateManager.colorMask(true, true, true, false)
-  //          this.drawGradientRect(fakeSlot.xPos, fakeSlot.yPos, fakeSlot.xPos + 16, fakeSlot.yPos + 16, -2130706433, -2130706433)
-  //          GlStateManager.colorMask(true, true, true, true)
-  //          GlStateManager.enableLighting()
-  //          GlStateManager.enableDepth()
-  //        }
-  //      }
-  //      else {
-  //        GlStateManager.disableLighting()
-  //        GlStateManager.disableDepth()
-  //        GlStateManager.colorMask(true, true, true, false)
-  //        this.drawGradientRect(fakeSlot.xPos, fakeSlot.yPos, fakeSlot.xPos + 16, fakeSlot.yPos + 16, 0x55000000, 0x55000000)
-  //        GlStateManager.colorMask(true, true, true, true)
-  //        GlStateManager.enableLighting()
-  //        GlStateManager.enableDepth()
-  //      }
-  //    }
-  //    GlStateManager.popMatrix()
-  //  }
 
   override def renderHoveredToolTip(mouseX: Int, mouseY: Int) = {
     super.renderHoveredToolTip(mouseX, mouseY)

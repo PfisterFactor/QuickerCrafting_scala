@@ -25,16 +25,18 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
   val clientSlotsStart = inventorySlots.size()
   // Stores all the recipes
   val recipeInventory = new InventoryBasic("", false, 27)
-  var slotRowYOffest: Int = 0
+  var slotRowYOffset: Int = 0
+  var shouldDisplayScrollbar = false
 
   for (y <- 0 until 3; x <- 0 until 9) {
     addSlotToContainer(new ClientSlot(recipeInventory, y * 9 + x, 8 + x * 18, 20 + y * 18))
   }
 
   def updateDisplay(currentScroll: Double): Unit = {
-    slotRowYOffest = 0
+    slotRowYOffset = 0
     //(currentScroll * (recipeStream.size()-1 / 9)).toInt
-    val iterator = RecipeCalculator.getRecipeIterator.drop(slotRowYOffest * 9)
+    val iterator = RecipeCalculator.getRecipeIterator.drop(slotRowYOffset * 9)
+    shouldDisplayScrollbar = true
     inventorySlots.drop(clientSlotsStart).foreach(slot => {
       val recipe = Try(iterator.next())
 
@@ -45,6 +47,7 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
       else {
         slot.putStack(ItemStack.EMPTY)
         slot.asInstanceOf[ClientSlot].enabled = false
+        shouldDisplayScrollbar = false
       }
     })
   }
@@ -53,7 +56,7 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
     if (slotNum < clientSlotsStart || slotNum >= inventorySlots.size())
       None
     else {
-      Try(RecipeCalculator.getRecipeIterator.drop(inventorySlots.get(slotNum).getSlotIndex + slotRowYOffest * 9).next()).toOption
+      Try(RecipeCalculator.getRecipeIterator.drop(inventorySlots.get(slotNum).getSlotIndex + slotRowYOffset * 9).next()).toOption
     }
   }
 
