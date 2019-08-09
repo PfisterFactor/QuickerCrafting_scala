@@ -24,8 +24,11 @@ import pfister.quickercrafting.common.util.CraftHandler
 
 import scala.collection.JavaConversions._
 
+
+// Companion object for GuiQuickerCrafting
+// The name is slightly different because forge throws a fit if we try to register an object as an event handler with the same name as a non-static class
 @EventBusSubscriber(Array(Side.CLIENT))
-object GuiQuickerCrafting {
+object GuiQuickCrafting {
   final val TEXTURE: ResourceLocation = new ResourceLocation(QuickerCrafting.MOD_ID, "textures/gui/quickercrafting_new.png")
 
   def canStack(itemStack1: ItemStack, itemStack2: ItemStack): Boolean = !itemStack1.isEmpty && !itemStack2.isEmpty && itemStack1.isItemEqual(itemStack2) && itemStack1.isStackable && (!itemStack1.getHasSubtypes || (itemStack1.getItemDamage == itemStack2.getItemDamage)) && ItemStack.areItemStackTagsEqual(itemStack1, itemStack2)
@@ -124,7 +127,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
   override def drawGuiContainerBackgroundLayer(partialTicks: Float, mouseX: Int, mouseY: Int): Unit = {
     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
     // Bind the GUI texture
-    this.mc.getTextureManager.bindTexture(GuiQuickerCrafting.TEXTURE)
+    this.mc.getTextureManager.bindTexture(GuiQuickCrafting.TEXTURE)
     this.drawTexturedModalRect(this.guiLeft, this.guiTop, 0, 0, this.xSize, this.ySize)
 
   }
@@ -153,7 +156,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
     GlStateManager.disableLighting()
     GlStateManager.disableDepth()
     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
-    this.mc.getTextureManager.bindTexture(GuiQuickerCrafting.TEXTURE)
+    this.mc.getTextureManager.bindTexture(GuiQuickCrafting.TEXTURE)
     if (Scrollbar.isEnabled)
       this.drawTexturedModalRect(GuiScrollBar.GUI_POS_X, MathHelper.clamp(GuiScrollBar.GUI_POS_Y - GuiScrollBar.TEX_HEIGHT / 2 + (GuiScrollBar.SCROLLBAR_HEIGHT * Scrollbar.currentScroll).toInt, GuiScrollBar.GUI_POS_Y, GuiScrollBar.GUI_POS_Y + GuiScrollBar.SCROLLBAR_HEIGHT - GuiScrollBar.TEX_HEIGHT - 1), GuiScrollBar.TEX_OFFSET_X, GuiScrollBar.TEX_OFFSET_Y, GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_HEIGHT)
     else {
