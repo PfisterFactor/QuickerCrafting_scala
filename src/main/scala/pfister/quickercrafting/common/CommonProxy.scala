@@ -21,6 +21,7 @@ class CommonProxy {
   @EventHandler
   def preInit(event:FMLPreInitializationEvent): Unit = {
     PacketHandler.registerMessages()
+
   }
 
   // Init is where to accomplish any game related tasks that rely upon the items and blocks set up in preInit.

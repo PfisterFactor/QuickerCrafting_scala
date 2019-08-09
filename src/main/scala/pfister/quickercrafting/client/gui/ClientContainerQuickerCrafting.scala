@@ -23,22 +23,27 @@ class ClientSlot(inv: IInventory, index: Int, xPos: Int, yPos: Int) extends NoDr
 class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends ContainerQuickerCrafting(playerInv) {
   val RecipeCalculator: RecipeCalculator = new RecipeCalculator(this)
   val clientSlotsStart = inventorySlots.size()
+
   // Stores all the recipes
   val recipeInventory = new InventoryBasic("", false, 27)
-  var slotRowYOffset: Int = 0
   var shouldDisplayScrollbar = false
+  protected var slotRowYOffset = 0
+  protected var recipeStream: Stream[IRecipe] = RecipeCalculator.getRecipeIterator.toStream
 
   for (y <- 0 until 3; x <- 0 until 9) {
     addSlotToContainer(new ClientSlot(recipeInventory, y * 9 + x, 8 + x * 18, 20 + y * 18))
   }
 
   def updateDisplay(currentScroll: Double): Unit = {
-    slotRowYOffset = 0
-    //(currentScroll * (recipeStream.size()-1 / 9)).toInt
-    val iterator = RecipeCalculator.getRecipeIterator.drop(slotRowYOffset * 9)
-    shouldDisplayScrollbar = true
+    recipeStream = RecipeCalculator.getRecipeIterator.toStream
+    val length = recipeStream.length
+    val i = (length + 8) / 9 - 3
+    slotRowYOffset = ((currentScroll * i.toDouble) + 0.5D).toInt
+    shouldDisplayScrollbar = length > inventorySlots.size() - clientSlotsStart
+
+
     inventorySlots.drop(clientSlotsStart).foreach(slot => {
-      val recipe = Try(iterator.next())
+      val recipe = Try(recipeStream(slotRowYOffset * 9 + slot.slotNumber - clientSlotsStart))
 
       if (recipe.isSuccess) {
         slot.asInstanceOf[ClientSlot].enabled = true
@@ -47,7 +52,6 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
       else {
         slot.putStack(ItemStack.EMPTY)
         slot.asInstanceOf[ClientSlot].enabled = false
-        shouldDisplayScrollbar = false
       }
     })
   }
@@ -56,7 +60,7 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
     if (slotNum < clientSlotsStart || slotNum >= inventorySlots.size())
       None
     else {
-      Try(RecipeCalculator.getRecipeIterator.drop(inventorySlots.get(slotNum).getSlotIndex + slotRowYOffset * 9).next()).toOption
+      Try(recipeStream(slotRowYOffset * 9 + slotNum - clientSlotsStart)).toOption
     }
   }
 
