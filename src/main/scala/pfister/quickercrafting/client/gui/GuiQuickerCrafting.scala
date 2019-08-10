@@ -134,7 +134,8 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
 
   // Draws the buttons and stuff on top of the background
   override def drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float): Unit = {
-    inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].updateDisplay(Scrollbar.currentScroll)
+    val hoveredSlotIndex = Option(getSlotUnderMouse).find(_.isInstanceOf[ClientSlot]).map(_.slotNumber).getOrElse(-1)
+    inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].updateDisplay(Scrollbar.currentScroll, hoveredSlotIndex)
     Scrollbar.isEnabled = inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].shouldDisplayScrollbar
     drawDefaultBackground()
     val isClicking: Boolean = Mouse.isButtonDown(0)
@@ -151,28 +152,10 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
       //this.inventorySlots.asInstanceOf[GuiContainerCreative.ContainerCreative].scrollTo(this.currentScroll)
     }
     super.drawScreen(mouseX, mouseY, partialTicks)
-    GlStateManager.pushMatrix()
-    GlStateManager.translate(guiLeft, guiTop, 0)
-    GlStateManager.disableLighting()
-    GlStateManager.disableDepth()
-    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
-    this.mc.getTextureManager.bindTexture(GuiQuickCrafting.TEXTURE)
-    if (Scrollbar.isEnabled)
-      this.drawTexturedModalRect(GuiScrollBar.GUI_POS_X, MathHelper.clamp(GuiScrollBar.GUI_POS_Y - GuiScrollBar.TEX_HEIGHT / 2 + (GuiScrollBar.SCROLLBAR_HEIGHT * Scrollbar.currentScroll).toInt, GuiScrollBar.GUI_POS_Y, GuiScrollBar.GUI_POS_Y + GuiScrollBar.SCROLLBAR_HEIGHT - GuiScrollBar.TEX_HEIGHT - 1), GuiScrollBar.TEX_OFFSET_X, GuiScrollBar.TEX_OFFSET_Y, GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_HEIGHT)
-    else {
-      this.drawTexturedModalRect(GuiScrollBar.GUI_POS_X, GuiScrollBar.GUI_POS_Y, GuiScrollBar.TEX_OFFSET_X + GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_OFFSET_Y, GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_HEIGHT)
-      Scrollbar.currentScroll = 0
+
+    if (getSlotUnderMouse != null && getSlotUnderMouse.isInstanceOf[ClientSlot]) {
+      hoveredRecipe = getSlotUnderMouse.asInstanceOf[ClientSlot].Recipe
     }
-
-
-    GlStateManager.colorMask(true, true, true, false)
-    inventorySlots.inventorySlots.filter(s => !s.isEnabled && s.isInstanceOf[ClientSlot]).foreach(slot =>
-      drawGradientRect(slot.xPos, slot.yPos, slot.xPos + 16, slot.yPos + 16, 0x55000000, 0x55000000)
-    )
-    GlStateManager.popMatrix()
-
-    if (getSlotUnderMouse != null)
-      hoveredRecipe = inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].getRecipeForSlot(getSlotUnderMouse.slotNumber)
     else
       hoveredRecipe = None
 
@@ -186,14 +169,30 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
 
   override def renderHoveredToolTip(mouseX: Int, mouseY: Int) = {
     super.renderHoveredToolTip(mouseX, mouseY)
-    if (hoveredRecipe.isDefined) {
+    if (hoveredRecipe.isDefined)
       renderToolTip(hoveredRecipe.get.getRecipeOutput, mouseX, mouseY)
-    }
   }
 
   override def drawGuiContainerForegroundLayer(mouseX: Int, mouseY: Int): Unit = {
     this.fontRenderer.drawString(I18n.format("container.crafting"), 8, 6, 4210752)
     this.fontRenderer.drawString(I18n.format("container.inventory"), 8, 78, 4210752)
+    GlStateManager.colorMask(true, true, true, false)
+    GlStateManager.pushMatrix()
+    GlStateManager.disableLighting()
+    GlStateManager.disableDepth()
+    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
+    this.mc.getTextureManager.bindTexture(GuiQuickCrafting.TEXTURE)
+    if (Scrollbar.isEnabled)
+      this.drawTexturedModalRect(GuiScrollBar.GUI_POS_X, MathHelper.clamp(GuiScrollBar.GUI_POS_Y - GuiScrollBar.TEX_HEIGHT / 2 + (GuiScrollBar.SCROLLBAR_HEIGHT * Scrollbar.currentScroll).toInt, GuiScrollBar.GUI_POS_Y, GuiScrollBar.GUI_POS_Y + GuiScrollBar.SCROLLBAR_HEIGHT - GuiScrollBar.TEX_HEIGHT - 1), GuiScrollBar.TEX_OFFSET_X, GuiScrollBar.TEX_OFFSET_Y, GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_HEIGHT)
+    else {
+      this.drawTexturedModalRect(GuiScrollBar.GUI_POS_X, GuiScrollBar.GUI_POS_Y, GuiScrollBar.TEX_OFFSET_X + GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_OFFSET_Y, GuiScrollBar.TEX_WIDTH, GuiScrollBar.TEX_HEIGHT)
+      Scrollbar.currentScroll = 0
+    }
+    GlStateManager.popMatrix()
+
+    inventorySlots.inventorySlots.filter(s => s.isInstanceOf[ClientSlot] && (s.asInstanceOf[ClientSlot].State == SlotState.DISABLED || s.asInstanceOf[ClientSlot].State == SlotState.EMPTY)).foreach(slot =>
+      drawGradientRect(slot.xPos, slot.yPos, slot.xPos + 16, slot.yPos + 16, 0x55000000, 0x55000000)
+    )
 
   }
 

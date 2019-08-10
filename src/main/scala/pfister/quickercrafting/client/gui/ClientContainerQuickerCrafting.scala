@@ -12,11 +12,18 @@ import pfister.quickercrafting.common.util.RecipeCalculator
 import scala.collection.JavaConversions._
 import scala.util.Try
 
+object SlotState extends Enumeration {
+  // Enabled means the slot has a recipe, disabled means the slot has no recipe, empty means the slot has a recipe, but can't be crafted
+  val ENABLED, DISABLED, EMPTY = Value
+}
+
 @SideOnly(Side.CLIENT)
 class ClientSlot(inv: IInventory, index: Int, xPos: Int, yPos: Int) extends NoDragSlot(inv, index, xPos, yPos) {
-  var enabled = true
 
-  override def isEnabled: Boolean = enabled
+  var State: SlotState.Value = SlotState.EMPTY
+  var Recipe: Option[IRecipe] = None
+
+  override def isEnabled: Boolean = State == SlotState.ENABLED || State == SlotState.EMPTY
 }
 
 @SideOnly(Side.CLIENT)
@@ -34,33 +41,49 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
     addSlotToContainer(new ClientSlot(recipeInventory, y * 9 + x, 8 + x * 18, 20 + y * 18))
   }
 
-  def updateDisplay(currentScroll: Double): Unit = {
+  def updateDisplay(currentScroll: Double, exemptSlotIndex: Int): Unit = {
     recipeStream = RecipeCalculator.getRecipeIterator.toStream
     val length = recipeStream.length
     val i = (length + 8) / 9 - 3
     slotRowYOffset = ((currentScroll * i.toDouble) + 0.5D).toInt
     shouldDisplayScrollbar = length > inventorySlots.size() - clientSlotsStart
 
-
-    inventorySlots.drop(clientSlotsStart).foreach(slot => {
+    val exemptSlot: Option[ClientSlot] = if (exemptSlotIndex != -1 && exemptSlotIndex > clientSlotsStart)
+      Some(getSlot(exemptSlotIndex).asInstanceOf[ClientSlot])
+    else
+      None
+    var exemptRecipeIsPresent: Boolean = false
+    inventorySlots.drop(clientSlotsStart).filterNot(_.slotNumber == exemptSlotIndex).map(_.asInstanceOf[ClientSlot]).foreach(slot => {
       val recipe = Try(recipeStream(slotRowYOffset * 9 + slot.slotNumber - clientSlotsStart))
-
       if (recipe.isSuccess) {
-        slot.asInstanceOf[ClientSlot].enabled = true
+        if (exemptSlot.isDefined && exemptSlot.get.Recipe.isDefined && recipe.get == exemptSlot.get.Recipe.get)
+          exemptRecipeIsPresent = true
         slot.putStack(recipe.get.getRecipeOutput)
+        slot.State = SlotState.ENABLED
+        slot.Recipe = Some(recipe.get)
       }
       else {
         slot.putStack(ItemStack.EMPTY)
-        slot.asInstanceOf[ClientSlot].enabled = false
+        slot.State = SlotState.DISABLED
+        slot.Recipe = None
       }
     })
+    if (exemptSlot.isDefined) {
+      val recipe = Try(recipeStream(slotRowYOffset * 9 + exemptSlot.get.slotNumber - clientSlotsStart)).toOption
+      if (recipe.isDefined && exemptSlot.get.Recipe.isDefined && recipe == exemptSlot.get.Recipe)
+        exemptRecipeIsPresent = true
+      if (!exemptRecipeIsPresent)
+        exemptSlot.get.State = SlotState.EMPTY
+    }
+
+
   }
 
   def getRecipeForSlot(slotNum: Int): Option[IRecipe] = {
     if (slotNum < clientSlotsStart || slotNum >= inventorySlots.size())
       None
     else {
-      Try(recipeStream(slotRowYOffset * 9 + slotNum - clientSlotsStart)).toOption
+      getSlot(slotNum).asInstanceOf[ClientSlot].Recipe
     }
   }
 
