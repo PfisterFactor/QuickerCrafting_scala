@@ -29,7 +29,7 @@ object ExtensionClasses {
         val stack = invBasic.getStackInSlot(i)
         if (stack.isEmpty && emptySlotIndex == -1)
           emptySlotIndex = i
-        else if (ItemStack.areItemsEqual(copied, stack) && condensedSlotIndex == -1)
+        else if (ItemStack.areItemsEqual(copied, stack) && copied.getCount + stack.getCount < copied.getMaxStackSize && condensedSlotIndex == -1)
           condensedSlotIndex = i
       })
       if (condensedSlotIndex != -1) {
