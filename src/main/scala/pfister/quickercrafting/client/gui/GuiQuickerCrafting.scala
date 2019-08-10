@@ -130,6 +130,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
       val rows = (this.inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].recipeStream.length + 8) / 9
       if (i > 0) i = 1
       else if (i < 0) i = -1
+      Scrollbar.isScrolling = true
       Scrollbar.currentScroll = Scrollbar.currentScroll - i / rows.toFloat
       Scrollbar.currentScroll = MathHelper.clamp(Scrollbar.currentScroll, 0.0F, 1.0F)
     }
@@ -146,7 +147,9 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
 
   // Draws the buttons and stuff on top of the background
   override def drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float): Unit = {
-    val hoveredSlotIndex = Option(getSlotUnderMouse).find(_.isInstanceOf[ClientSlot]).map(_.slotNumber).getOrElse(-1)
+    var hoveredSlotIndex = Option(getSlotUnderMouse).find(_.isInstanceOf[ClientSlot]).map(_.slotNumber).getOrElse(-1)
+    if (Scrollbar.isScrolling)
+      hoveredSlotIndex = -1
     inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].updateDisplay(Scrollbar.currentScroll, hoveredSlotIndex)
     Scrollbar.isEnabled = inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].shouldDisplayScrollbar
     drawDefaultBackground()
