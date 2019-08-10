@@ -29,13 +29,13 @@ class ClientSlot(inv: IInventory, index: Int, xPos: Int, yPos: Int) extends NoDr
 @SideOnly(Side.CLIENT)
 class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends ContainerQuickerCrafting(playerInv) {
   val RecipeCalculator: RecipeCalculator = new RecipeCalculator(this)
-  val clientSlotsStart = inventorySlots.size()
+  val clientSlotsStart: Int = inventorySlots.size()
 
   // Stores all the recipes
   val recipeInventory = new InventoryBasic("", false, 27)
   var shouldDisplayScrollbar = false
   protected var slotRowYOffset = 0
-  protected var recipeStream: Stream[IRecipe] = RecipeCalculator.getRecipeIterator.toStream
+  var recipeStream: Stream[IRecipe] = RecipeCalculator.getRecipeIterator.toStream
 
   for (y <- 0 until 3; x <- 0 until 9) {
     addSlotToContainer(new ClientSlot(recipeInventory, y * 9 + x, 8 + x * 18, 20 + y * 18))
@@ -44,8 +44,8 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
   def updateDisplay(currentScroll: Double, exemptSlotIndex: Int): Unit = {
     recipeStream = RecipeCalculator.getRecipeIterator.toStream
     val length = recipeStream.length
-    val i = (length + 8) / 9 - 3
-    slotRowYOffset = ((currentScroll * i.toDouble) + 0.5D).toInt
+    val rows = (length + 8) / 9 - 3
+    slotRowYOffset = ((currentScroll * rows.toDouble) + 0.5D).toInt
     shouldDisplayScrollbar = length > inventorySlots.size() - clientSlotsStart
     inventorySlots.drop(clientSlotsStart).filterNot(_.slotNumber == exemptSlotIndex).map(_.asInstanceOf[ClientSlot]).foreach(slot => {
       val recipe = Try(recipeStream(slotRowYOffset * 9 + slot.slotNumber - clientSlotsStart))

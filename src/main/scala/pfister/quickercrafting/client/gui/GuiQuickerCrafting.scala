@@ -123,6 +123,18 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
     }
   }
 
+  override def handleMouseInput(): Unit = {
+    super.handleMouseInput()
+    var i = Mouse.getEventDWheel
+    if (i != 0 && Scrollbar.isEnabled) {
+      val rows = (this.inventorySlots.asInstanceOf[ClientContainerQuickerCrafting].recipeStream.length + 8) / 9
+      if (i > 0) i = 1
+      else if (i < 0) i = -1
+      Scrollbar.currentScroll = Scrollbar.currentScroll - i / rows.toFloat
+      Scrollbar.currentScroll = MathHelper.clamp(Scrollbar.currentScroll, 0.0F, 1.0F)
+    }
+  }
+
   // Draws the background to the GUI
   override def drawGuiContainerBackgroundLayer(partialTicks: Float, mouseX: Int, mouseY: Int): Unit = {
     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F)
@@ -149,7 +161,6 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
     if (Scrollbar.isScrolling) {
       Scrollbar.currentScroll = (mouseY - (guiTop + GuiScrollBar.GUI_POS_Y)) / GuiScrollBar.SCROLLBAR_HEIGHT.toFloat
       Scrollbar.currentScroll = MathHelper.clamp(Scrollbar.currentScroll, 0.0F, 1.0F)
-      //this.inventorySlots.asInstanceOf[GuiContainerCreative.ContainerCreative].scrollTo(this.currentScroll)
     }
     super.drawScreen(mouseX, mouseY, partialTicks)
 
@@ -167,7 +178,7 @@ class GuiQuickerCrafting(playerInv: InventoryPlayer) extends GuiContainer(new Cl
 
   }
 
-  override def renderHoveredToolTip(mouseX: Int, mouseY: Int) = {
+  override def renderHoveredToolTip(mouseX: Int, mouseY: Int): Unit = {
     super.renderHoveredToolTip(mouseX, mouseY)
     if (hoveredRecipe.isDefined)
       renderToolTip(hoveredRecipe.get.getRecipeOutput, mouseX, mouseY)
