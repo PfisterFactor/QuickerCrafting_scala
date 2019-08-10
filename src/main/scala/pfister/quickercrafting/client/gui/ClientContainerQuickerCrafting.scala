@@ -47,17 +47,9 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
     val i = (length + 8) / 9 - 3
     slotRowYOffset = ((currentScroll * i.toDouble) + 0.5D).toInt
     shouldDisplayScrollbar = length > inventorySlots.size() - clientSlotsStart
-
-    val exemptSlot: Option[ClientSlot] = if (exemptSlotIndex != -1 && exemptSlotIndex > clientSlotsStart)
-      Some(getSlot(exemptSlotIndex).asInstanceOf[ClientSlot])
-    else
-      None
-    var exemptRecipeIsPresent: Boolean = false
     inventorySlots.drop(clientSlotsStart).filterNot(_.slotNumber == exemptSlotIndex).map(_.asInstanceOf[ClientSlot]).foreach(slot => {
       val recipe = Try(recipeStream(slotRowYOffset * 9 + slot.slotNumber - clientSlotsStart))
       if (recipe.isSuccess) {
-        if (exemptSlot.isDefined && exemptSlot.get.Recipe.isDefined && recipe.get == exemptSlot.get.Recipe.get)
-          exemptRecipeIsPresent = true
         slot.putStack(recipe.get.getRecipeOutput)
         slot.State = SlotState.ENABLED
         slot.Recipe = Some(recipe.get)
@@ -68,14 +60,13 @@ class ClientContainerQuickerCrafting(playerInv: InventoryPlayer) extends Contain
         slot.Recipe = None
       }
     })
-    if (exemptSlot.isDefined) {
-      val recipe = Try(recipeStream(slotRowYOffset * 9 + exemptSlot.get.slotNumber - clientSlotsStart)).toOption
-      if (recipe.isDefined && exemptSlot.get.Recipe.isDefined && recipe == exemptSlot.get.Recipe)
-        exemptRecipeIsPresent = true
-      if (!exemptRecipeIsPresent)
-        exemptSlot.get.State = SlotState.EMPTY
-    }
+    val exemptSlot: Option[ClientSlot] = if (exemptSlotIndex != -1 && exemptSlotIndex > clientSlotsStart)
+      Some(getSlot(exemptSlotIndex).asInstanceOf[ClientSlot])
+    else
+      None
 
+    if (exemptSlot.isDefined && exemptSlot.get.State != SlotState.DISABLED && exemptSlot.get.Recipe.isDefined && !recipeStream.contains(exemptSlot.get.Recipe.get))
+      exemptSlot.get.State = SlotState.EMPTY
 
   }
 
